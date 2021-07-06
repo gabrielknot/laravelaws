@@ -1,0 +1,23 @@
+name: 'Testing Github Actions'
+
+
+on: [push]
+
+jobs:
+  Cloudformation-checker:
+    name: Check linting and security concerns
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: cfn-lint-action
+        uses: ScottBrenner/cfn-lint-action@1.6.1
+        with:
+          args: "cloudformation/**/*.yaml"
+
+      - name: cfn-nag-action
+        uses: minchao/cfn-nag-action@v0.1
+        with:
+          args: '--input-path cloudformation/
+
