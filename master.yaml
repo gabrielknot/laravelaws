@@ -1,10 +1,6 @@
 Description: >
 
-    This template deploys a VPC, with a pair of public and private subnets spread
-    across two Availability Zones. It deploys an Internet Gateway, with a default
-    route on the public subnets, plus two NAT Gateways for the private ones.
-    It then deploys an Aurora cluster, a public S3 bucket and a corresponding
-    CloudFront distribution.
+   CloudFront distribution.
     Finally, it deploys an ECS cluster with an Application Load Balancer at the front
     and one ECR Docker registry to push your Laravel and Nginx images to.
 
