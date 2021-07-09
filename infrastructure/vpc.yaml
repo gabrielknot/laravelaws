@@ -35,6 +35,16 @@ Parameters:
         Type: String
         Default: 10.192.21.0/24
 
+    PublicSubnet3CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the 3th Availability Zone
+        Type: String
+        Default: 10.192.12.0/24
+
+    PrivateSubnet3CIDR:
+        Description: Please enter the IP range (CIDR notation) for the private subnet in the th Availability Zone
+        Type: String
+        Default: 10.192.22.0/24
+
 Resources:
 
     VPC: 
@@ -79,6 +89,17 @@ Resources:
             Tags:
                 - Key: Name
                   Value: !Sub ${EnvironmentName} Public Subnet (AZ2)
+
+    PublicSubnet3: 
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 2, !GetAZs ]
+            CidrBlock: !Ref PublicSubnet3CIDR
+            MapPublicIpOnLaunch: true
+            Tags: 
+                - Key: Name 
+                  Value: !Sub ${EnvironmentName} Public Subnet (AZ3)
 
     PrivateSubnet1:
         Type: AWS::EC2::Subnet
@@ -126,6 +147,29 @@ Resources:
             AllocationId: !GetAtt NatGateway2EIP.AllocationId
             SubnetId: !Ref PublicSubnet2
 
+    PrivateSubnet3:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 2, !GetAZs ]
+            CidrBlock: !Ref PrivateSubnet3CIDR
+            MapPublicIpOnLaunch: false
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
+
+    NatGateway3EIP:
+        Type: AWS::EC2::EIP
+        DependsOn: InternetGatewayAttachment
+        Properties:
+            Domain: vpc
+
+    NatGateway3:
+        Type: AWS::EC2::NatGateway
+        Properties:
+            AllocationId: !GetAtt NatGateway3EIP.AllocationId
+            SubnetId: !Ref PublicSubnet3
+
     PublicRouteTable:
         Type: AWS::EC2::RouteTable
         Properties: 
@@ -153,6 +197,13 @@ Resources:
         Properties:
             RouteTableId: !Ref PublicRouteTable
             SubnetId: !Ref PublicSubnet2
+
+
+    PublicSubnet3RouteTableAssociation:
+        Type: AWS::EC2::SubnetRouteTableAssociation
+        Properties:
+            RouteTableId: !Ref PublicRouteTable
+            SubnetId: !Ref PublicSubnet3
 
     PrivateRouteTable1:
         Type: AWS::EC2::RouteTable
@@ -183,6 +234,13 @@ Resources:
           - Key: Name
             Value: !Sub ${EnvironmentName} Private Routes (AZ2)
 
+    PrivateRouteTable3:
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref VPC
+        Tags:
+          - Key: Name
+            Value: !Sub ${EnvironmentName} Private Routes (AZ3)
     DefaultPrivateRoute2:
       Type: AWS::EC2::Route
       Properties:
@@ -195,6 +253,19 @@ Resources:
       Properties:
         RouteTableId: !Ref PrivateRouteTable2
         SubnetId: !Ref PrivateSubnet2
+
+    DefaultPrivateRoute3:
+      Type: AWS::EC2::Route
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable3
+        DestinationCidrBlock: 0.0.0.0/0
+        NatGatewayId: !Ref NatGateway3
+
+    PrivateSubnet3RouteTableAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+        RouteTableId: !Ref PrivateRouteTable3
+        SubnetId: !Ref PrivateSubnet3
 
     # This security group defines who/where is allowed to access the ECS hosts directly.
     # By default we're just allowing access from the load balancer.  If you want to SSH
@@ -254,11 +325,11 @@ Outputs:
 
     PublicSubnets:
       Description: A list of the public subnets
-      Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2 ]]
+      Value: !Join [ ",", [ !Ref PublicSubnet1, !Ref PublicSubnet2, !Ref PublicSubnet3 ]]
 
     PrivateSubnets:
       Description: A list of the private subnets
-      Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2 ]]
+      Value: !Join [ ",", [ !Ref PrivateSubnet1, !Ref PrivateSubnet2, !Ref PrivateSubnet3 ]]
 
     PublicSubnet1:
       Description: A reference to the public subnet in the 1st Availability Zone
@@ -283,6 +354,18 @@ Outputs:
     NatGateway2EIP:
       Description: NAT Gateway 2 IP address
       Value: !Ref NatGateway2EIP
+
+    PublicSubnet3:
+      Description: A reference to the public subnet in the 3st Availability Zone
+      Value: !Ref PublicSubnet3
+
+    PrivateSubnet3:
+      Description: A reference to the private subnet in the 3st Availability Zone
+      Value: !Ref PrivateSubnet3
+
+    NatGateway3EIP:
+      Description: NAT Gateway 3 IP address
+      Value: !Ref NatGateway3EIP
 
     ECSSecurityGroup:
         Description: A reference to the security group for EC2 hosts
