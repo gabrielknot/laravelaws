@@ -24,6 +24,11 @@ Parameters:
         Description: Please enter the IP range (CIDR notation) for the public subnet in the second Availability Zone
         Type: String
         Default: 10.192.11.0/24
+        
+    PublicSubnet3CIDR:
+        Description: Please enter the IP range (CIDR notation) for the public subnet in the 3th Availability Zone
+        Type: String
+        Default: 10.192.12.0/24
 
     PrivateSubnet1CIDR:
         Description: Please enter the IP range (CIDR notation) for the private subnet in the first Availability Zone
@@ -34,11 +39,6 @@ Parameters:
         Description: Please enter the IP range (CIDR notation) for the private subnet in the second Availability Zone
         Type: String
         Default: 10.192.21.0/24
-
-    PublicSubnet3CIDR:
-        Description: Please enter the IP range (CIDR notation) for the public subnet in the 3th Availability Zone
-        Type: String
-        Default: 10.192.12.0/24
 
     PrivateSubnet3CIDR:
         Description: Please enter the IP range (CIDR notation) for the private subnet in the th Availability Zone
@@ -123,6 +123,16 @@ Resources:
                 - Key: Name
                   Value: !Sub ${EnvironmentName} Private Subnet (AZ2)
 
+    PrivateSubnet3:
+        Type: AWS::EC2::Subnet
+        Properties:
+            VpcId: !Ref VPC
+            AvailabilityZone: !Select [ 2, !GetAZs ]
+            CidrBlock: !Ref PrivateSubnet3CIDR
+            MapPublicIpOnLaunch: false
+            Tags:
+                - Key: Name
+                  Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
     NatGateway1EIP:
         Type: AWS::EC2::EIP
         DependsOn: InternetGatewayAttachment
@@ -147,16 +157,6 @@ Resources:
             AllocationId: !GetAtt NatGateway2EIP.AllocationId
             SubnetId: !Ref PublicSubnet2
 
-    PrivateSubnet3:
-        Type: AWS::EC2::Subnet
-        Properties:
-            VpcId: !Ref VPC
-            AvailabilityZone: !Select [ 2, !GetAZs ]
-            CidrBlock: !Ref PrivateSubnet3CIDR
-            MapPublicIpOnLaunch: false
-            Tags:
-                - Key: Name
-                  Value: !Sub ${EnvironmentName} Private Subnet (AZ3)
 
     NatGateway3EIP:
         Type: AWS::EC2::EIP
@@ -266,56 +266,6 @@ Resources:
       Properties:
         RouteTableId: !Ref PrivateRouteTable3
         SubnetId: !Ref PrivateSubnet3
-
-    # This security group defines who/where is allowed to access the ECS hosts directly.
-    # By default we're just allowing access from the load balancer.  If you want to SSH
-    # into the hosts, or expose non-load balanced services you can open their ports here.
-    ECSSecurityGroup:
-        Type: AWS::EC2::SecurityGroup
-        Properties:
-           VpcId: !Ref VPC
-           GroupDescription: Access to the ECS hosts and the tasks/containers that run on them
-           SecurityGroupIngress:
-               # Only allow inbound access to ECS from the ELB
-               - SourceSecurityGroupId: !Ref LoadBalancerSecurityGroup
-                 IpProtocol: -1
-               - IpProtocol: tcp
-                 CidrIp: 0.0.0.0/0
-                 FromPort: '22'
-                 ToPort: '22'
-           Tags:
-               - Key: Name
-                 Value: !Sub ${EnvironmentName}-ECS-Hosts
-
-    # This security group defines who/where is allowed to access the Application Load Balancer.
-    # By default, we've opened this up to the public internet (0.0.0.0/0) but can you restrict
-    # it further if you want.
-    LoadBalancerSecurityGroup:
-        Type: AWS::EC2::SecurityGroup
-        Properties:
-           VpcId: !Ref VPC
-           GroupDescription: Access to the load balancer that sits in front of ECS
-           SecurityGroupIngress:
-               # Allow access from anywhere to our ECS services
-               - CidrIp: 0.0.0.0/0
-                 IpProtocol: -1
-           Tags:
-               - Key: Name
-                 Value: !Sub ${EnvironmentName}-LoadBalancers
-
-    DBSecurityGroup:
-        Type: AWS::EC2::SecurityGroup
-        Properties:
-          GroupDescription: Open database for access
-          VpcId: !Ref VPC
-          SecurityGroupIngress:
-              - IpProtocol: tcp
-                FromPort: '3306'
-                ToPort: '3306'
-                SourceSecurityGroupId: !Ref ECSSecurityGroup
-          Tags:
-              - Key: Name
-                Value: !Sub ${EnvironmentName}-DB-Host
 
 Outputs: 
 
